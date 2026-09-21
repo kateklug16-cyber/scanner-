@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root {
+    --navy: #0b1730; --panel: #14264a; --flash-red: #d7263d;
+    --gold: #ffc61a; --ice: #e8f1ff; --ok: #3ddc97;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body { background: var(--navy); color: var(--ice); font-family: 'Barlow', system-ui, sans-serif; font-size: 18px; }
+  header { padding: 14px 24px; border-bottom: 4px solid var(--flash-red); background: var(--panel); }
+  h1 { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 34px; margin: 0; letter-spacing: .5px; }
+  h1 span { color: var(--gold); }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .scan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 800px) { .scan-grid { grid-template-columns: 1fr; } }
+  .mode { display: flex; gap: 8px; margin-bottom: 14px; }
+  .mode button {
+    flex: 1; font: 800 26px 'Barlow Condensed', sans-serif; padding: 14px; border-radius: 8px;
+    border: 3px solid var(--gold); background: transparent; color: var(--gold); cursor: pointer;
+  }
+  .mode button[aria-pressed="true"] { background: var(--gold); color: var(--navy); }
+  #reader { width: 100%; border: 4px solid var(--panel); border-radius: 10px; overflow: hidden; min-height: 260px; background: #050b18; }
+  .manual { display: flex; gap: 8px; margin-top: 12px; }
+  input { font: 400 20px 'Barlow', sans-serif; padding: 10px 12px; border-radius: 6px; border: 2px solid #4a6299; background: #0e1d3a; color: var(--ice); width: 100%; }
+  .go { font: 800 22px 'Barlow Condensed', sans-serif; background: var(--flash-red); color: #fff; border: 0; border-radius: 6px; padding: 10px 22px; cursor: pointer; white-space: nowrap; }
+  .hint { color: #9db4e0; font-size: 15px; margin: 8px 0 0; }
+  .result { background: var(--panel); border-radius: 12px; padding: 28px; border-left: 12px solid var(--gold); min-height: 320px; display: flex; flex-direction: column; justify-content: center; }
+  .result.ok { border-left-color: var(--ok); animation: flash .5s ease-out; }
+  .result.err { border-left-color: var(--flash-red); }
+  @keyframes flash { 0% { background: #ffffff; } 100% { background: var(--panel); } }
+  @media (prefers-reduced-motion: reduce) { .result.ok { animation: none; } }
+  .result .status { font: 800 30px 'Barlow Condensed', sans-serif; color: var(--ok); margin: 0 0 6px; }
+  .result .code { font: 800 72px/1 'Barlow Condensed', sans-serif; color: var(--gold); margin: 0; }
+  .result .title { font-size: 26px; margin: 8px 0 4px; }
+  .result .meta { color: #9db4e0; margin: 0; }
+  .result .stats { display: flex; gap: 32px; margin-top: 18px; }
+  .result .stat b { display: block; font: 800 44px 'Barlow Condensed', sans-serif; color: var(--ice); }
+  .result .stat span { color: #9db4e0; font-size: 15px; }
+  .idle { color: #9db4e0; font-size: 24px; text-align: center; }
+</style>
+</head>
+<body>
+<header><h1>S.T.A.R. Labs <span>Scanner</span></h1></header>
+<main>
+  <div class="scan-grid">
+    <div>
+      <div class="mode">
+        <button id="modeIn" aria-pressed="true">Scan in</button>
+        <button id="modeOut" aria-pressed="false">Scan out</button>
+      </div>
+      <div id="reader"></div>
+      <p class="hint" id="camHint">Hold your badge up to the camera.</p>
+      <div class="manual">
+        <input id="manualId" placeholder="Type or scan a badge ID (like K01)" autocomplete="off">
+        <button class="go" id="manualGo">Go</button>
+      </div>
+      <p class="hint">Camera not working? Type the ID here, or use a USB/Bluetooth barcode scanner.</p>
+    </div>
+    <div id="result" class="result"><p class="idle">Waiting for a scientist to check in.</p></div>
+  </div>
+</main>
+
+<script>
+  // PASTE your Apps Script web app URL (the one ending in /exec) between the quotes:
+  const API_URL = 'https://script.google.com/macros/s/AKfycbyp7bvjK533TkcNGJX_ADeRfzzusyrJJN5s1ZAUo0PhLhziRBi7gzRRERn0SHX7CN_a/exec';
+
+  let mode = 'in';
+  let busy = false;
+  const $ = id => document.getElementById(id);
+
+  function setMode(m) {
+    mode = m;
+    $('modeIn').setAttribute('aria-pressed', m === 'in');
+    $('modeOut').setAttribute('aria-pressed', m === 'out');
+  }
+  $('modeIn').onclick = () => setMode('in');
+  $('modeOut').onclick = () => setMode('out');
+
+  function handleId(raw) {
+    if (busy || !raw) return;
+    busy = true;
+    fetch(API_URL + '?action=scan&mode=' + encodeURIComponent(mode) + '&id=' + encodeURIComponent(raw.trim().toUpperCase()))
+      .then(r => r.json())
+      .then(showResult)
+      .catch(e => showResult({ error: 'Could not reach the lab database. Check the wifi and the API_URL.' }));
+    setTimeout(() => { busy = false; }, 2500);
+  }
+
+  function showResult(r) {
+    const box = $('result');
+    if (r.error) {
+      box.className = 'result err';
+      box.innerHTML = '<p class="status" style="color:#ff8a98">Badge not found</p><p class="title">' + esc(r.error) + '</p>';
+      return;
+    }
+    const k = r.kid;
+    box.className = 'result ok';
+    let html = '<p class="status">' + (k.mode === 'out' ? 'Checked out' : 'Access granted') + '</p>' +
+               '<p class="code">' + esc(k.code || k.name) + '</p>' +
+               '<p class="title">' + esc(k.title) + '</p>' +
+               '<p class="meta">' + esc(k.name) + ' · ' + esc(k.clearance) + '</p>';
+    if (k.mode === 'out') {
+      html += '<div class="stats">' +
+        '<div class="stat"><b>' + (k.sprint === '' ? '-' : esc(k.sprint)) + '</b><span>Top speed (mph)</span></div>' +
+        '<div class="stat"><b>' + (k.reflex === '' ? '-' : esc(k.reflex)) + '</b><span>Reflex time (sec)</span></div></div>';
+    }
+    box.innerHTML = html;
+  }
+
+  $('manualGo').onclick = () => { handleId($('manualId').value); $('manualId').value = ''; };
+  $('manualId').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { handleId($('manualId').value); $('manualId').value = ''; }
+  });
+
+  function startCamera() {
+    const blocked = () => { $('camHint').textContent = 'Camera is blocked here. Use the ID box below instead.'; };
+    try {
+      const scanner = new Html5Qrcode('reader');
+      scanner.start({ facingMode: 'user' }, { fps: 10, qrbox: { width: 240, height: 240 } },
+        text => handleId(text.trim().toUpperCase()), () => {}).catch(blocked);
+    } catch (e) { blocked(); }
+  }
+
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  startCamera();
+</script>
+</body>
+</html>

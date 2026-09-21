@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Owen's Birthday Lab Scanner</title>
+<title>S.T.A.R. Labs Scanner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -250,7 +250,7 @@
       html += '<div class="power"><span>Power unlocked</span><b>' + esc(power) + '</b></div>';
       if (r.counts) html += '<p class="count">' + r.counts.inLab + ' of ' + r.counts.total + ' scientists are in the lab.</p>';
       sfxIn();
-      speak('Welcome to Owen's Birthday Lab, ' + name + '. ' + (k.clearance ? 'Clearance ' + k.clearance + '. ' : '') + 'Power unlocked: ' + power + '.');
+      speak('Welcome to Star Labs, ' + name + '. ' + (k.clearance ? 'Clearance ' + k.clearance + '. ' : '') + 'Power unlocked: ' + power + '.');
     }
     box.innerHTML = html;
   }

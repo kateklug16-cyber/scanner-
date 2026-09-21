@@ -2,6 +2,8 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S.T.A.R. Labs Scanner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -13,41 +15,82 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; }
   body { background: var(--navy); color: var(--ice); font-family: 'Barlow', system-ui, sans-serif; font-size: 18px; }
-  header { padding: 14px 24px; border-bottom: 4px solid var(--flash-red); background: var(--panel); }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px; border-bottom: 4px solid var(--flash-red); background: var(--panel); }
   h1 { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 34px; margin: 0; letter-spacing: .5px; }
   h1 span { color: var(--gold); }
+  #mute { font: 600 16px 'Barlow', sans-serif; color: var(--ice); background: transparent; border: 2px solid var(--ice); border-radius: 6px; padding: 6px 14px; cursor: pointer; }
   button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   main { max-width: 1100px; margin: 0 auto; padding: 24px; }
   .scan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
   @media (max-width: 800px) { .scan-grid { grid-template-columns: 1fr; } }
   .mode { display: flex; gap: 8px; margin-bottom: 14px; }
-  .mode button {
-    flex: 1; font: 800 26px 'Barlow Condensed', sans-serif; padding: 14px; border-radius: 8px;
-    border: 3px solid var(--gold); background: transparent; color: var(--gold); cursor: pointer;
-  }
+  .mode button { flex: 1; font: 800 26px 'Barlow Condensed', sans-serif; padding: 14px; border-radius: 8px; border: 3px solid var(--gold); background: transparent; color: var(--gold); cursor: pointer; }
   .mode button[aria-pressed="true"] { background: var(--gold); color: var(--navy); }
-  #reader { width: 100%; border: 4px solid var(--panel); border-radius: 10px; overflow: hidden; min-height: 260px; background: #050b18; }
+  #readerWrap { position: relative; border: 4px solid var(--panel); border-radius: 10px; overflow: hidden; background: #050b18; min-height: 260px; }
+  #reader { width: 100%; }
+  #readerWrap.scanning::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--flash-red); box-shadow: 0 0 14px 4px var(--flash-red); animation: sweep .8s ease-in-out 2 alternate; }
+  @keyframes sweep { from { top: 0; } to { top: calc(100% - 4px); } }
   .manual { display: flex; gap: 8px; margin-top: 12px; }
   input { font: 400 20px 'Barlow', sans-serif; padding: 10px 12px; border-radius: 6px; border: 2px solid #4a6299; background: #0e1d3a; color: var(--ice); width: 100%; }
   .go { font: 800 22px 'Barlow Condensed', sans-serif; background: var(--flash-red); color: #fff; border: 0; border-radius: 6px; padding: 10px 22px; cursor: pointer; white-space: nowrap; }
   .hint { color: #9db4e0; font-size: 15px; margin: 8px 0 0; }
-  .result { background: var(--panel); border-radius: 12px; padding: 28px; border-left: 12px solid var(--gold); min-height: 320px; display: flex; flex-direction: column; justify-content: center; }
-  .result.ok { border-left-color: var(--ok); animation: flash .5s ease-out; }
+
+  .result { background: var(--panel); border-radius: 12px; padding: 28px; border-left: 12px solid var(--gold); min-height: 360px; display: flex; flex-direction: column; justify-content: center; }
+  .result.ok { border-left-color: var(--ok); }
   .result.err { border-left-color: var(--flash-red); }
-  @keyframes flash { 0% { background: #ffffff; } 100% { background: var(--panel); } }
-  @media (prefers-reduced-motion: reduce) { .result.ok { animation: none; } }
   .result .status { font: 800 30px 'Barlow Condensed', sans-serif; color: var(--ok); margin: 0 0 6px; }
   .result .code { font: 800 72px/1 'Barlow Condensed', sans-serif; color: var(--gold); margin: 0; }
+  .result .code.slam { animation: slam .4s cubic-bezier(.2, 1.6, .4, 1); }
+  @keyframes slam { from { transform: scale(2.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   .result .title { font-size: 26px; margin: 8px 0 4px; }
   .result .meta { color: #9db4e0; margin: 0; }
+  .power { margin-top: 18px; padding: 12px 16px; background: #0e1d3a; border-radius: 8px; border-left: 6px solid var(--gold); }
+  .power span { display: block; color: #9db4e0; font-size: 15px; }
+  .power b { font: 800 34px 'Barlow Condensed', sans-serif; color: var(--ice); }
+  .count { margin-top: 14px; color: #9db4e0; }
   .result .stats { display: flex; gap: 32px; margin-top: 18px; }
   .result .stat b { display: block; font: 800 44px 'Barlow Condensed', sans-serif; color: var(--ice); }
   .result .stat span { color: #9db4e0; font-size: 15px; }
   .idle { color: #9db4e0; font-size: 24px; text-align: center; }
+  .scanbar { height: 16px; background: #0e1d3a; border-radius: 8px; overflow: hidden; margin: 14px 0; }
+  .scanbar i { display: block; height: 100%; width: 0; background: var(--gold); animation: fill 1.6s linear forwards; }
+  @keyframes fill { to { width: 100%; } }
+
+  /* Lightning flash: the one big moment */
+  #flash { position: fixed; inset: 0; z-index: 20; pointer-events: none; opacity: 0; display: grid; place-items: center; background: #fff; }
+  #flash svg { width: 60vmin; height: 60vmin; }
+  #flash.go { animation: zapflash .8s ease-out; }
+  @keyframes zapflash { 0% { opacity: 1; background: #fff; } 25% { opacity: 1; background: var(--gold); } 100% { opacity: 0; } }
+
+  /* Start screen (needed so the browser allows sound) */
+  #start { position: fixed; inset: 0; z-index: 30; background: var(--navy); display: grid; place-content: center; text-align: center; gap: 20px; padding: 24px; }
+  #start h2 { font: 800 56px 'Barlow Condensed', sans-serif; margin: 0; }
+  #start p { color: #9db4e0; margin: 0; }
+  #start .go { font-size: 34px; padding: 16px 40px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .result .code.slam, #flash.go, #readerWrap.scanning::after { animation: none; }
+    #flash.go { opacity: .6; }
+  }
 </style>
 </head>
 <body>
-<header><h1>S.T.A.R. Labs <span>Scanner</span></h1></header>
+
+<div id="start">
+  <h2>S.T.A.R. Labs</h2>
+  <p>Turn the volume up, then start the lab.</p>
+  <div><button class="go" id="startBtn">Start the lab</button></div>
+</div>
+
+<div id="flash" aria-hidden="true">
+  <svg viewBox="0 0 100 100"><polygon fill="#d7263d" points="58,2 22,56 46,56 38,98 78,40 54,40"/></svg>
+</div>
+
+<header>
+  <h1>S.T.A.R. Labs <span>Scanner</span></h1>
+  <button id="mute" aria-pressed="false">Sound on</button>
+</header>
+
 <main>
   <div class="scan-grid">
     <div>
@@ -55,7 +98,7 @@
         <button id="modeIn" aria-pressed="true">Scan in</button>
         <button id="modeOut" aria-pressed="false">Scan out</button>
       </div>
-      <div id="reader"></div>
+      <div id="readerWrap"><div id="reader"></div></div>
       <p class="hint" id="camHint">Hold your badge up to the camera.</p>
       <div class="manual">
         <input id="manualId" placeholder="Type or scan a badge ID (like K01)" autocomplete="off">
@@ -69,12 +112,64 @@
 
 <script>
   // PASTE your Apps Script web app URL (the one ending in /exec) between the quotes:
-  const API_URL = 'https://script.google.com/macros/s/AKfycbyp7bvjK533TkcNGJX_ADeRfzzusyrJJN5s1ZAUo0PhLhziRBi7gzRRERn0SHX7CN_a/exec';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbymdWNlNQxFWjISwCybmyqtdyfXroH5f1EeBGWO4hru4TKGbHi-ETV_OB4Gkl5CMWlD/exec';
+
+  // Used only if a kid has no "Power" filled in on the Roster tab
+  const POWERS = ['Phase Vibration', 'Time Slow', 'Lightning Throw', 'Speed Force Aura',
+                  'Sonic Boom Clap', 'Afterimage Decoy', 'Wall Run', 'Vortex Spin'];
 
   let mode = 'in';
   let busy = false;
+  let soundOn = true;
+  let audio = null;
   const $ = id => document.getElementById(id);
 
+  // ---------- Sound ----------
+  function ac() {
+    if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+    return audio;
+  }
+  function tone(freq, start, dur, type, vol, endFreq) {
+    const a = ac(), t = a.currentTime + start;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    if (endFreq) o.frequency.exponentialRampToValueAtTime(endFreq, t + dur);
+    g.gain.setValueAtTime(vol || 0.15, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  function zap() {
+    const a = ac(), len = Math.floor(a.sampleRate * 0.3);
+    const buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+    const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    s.buffer = buf; f.type = 'highpass'; f.frequency.value = 1500; g.gain.value = 0.4;
+    s.connect(f); f.connect(g); g.connect(a.destination); s.start();
+  }
+  function sfxScan() { if (soundOn) tone(200, 0, 1.5, 'sawtooth', 0.06, 1400); }
+  function sfxIn()   { if (!soundOn) return; zap(); [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.12 + i * 0.09, 0.3, 'square', 0.08)); }
+  function sfxOut()  { if (!soundOn) return; [784, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.12, 0.35, 'triangle', 0.15)); }
+  function sfxErr()  { if (soundOn) tone(220, 0, 0.4, 'square', 0.08, 110); }
+
+  function speak(text) {
+    if (!soundOn || !window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.0; u.pitch = 0.9;
+    speechSynthesis.speak(u);
+  }
+
+  $('mute').onclick = () => {
+    soundOn = !soundOn;
+    $('mute').textContent = soundOn ? 'Sound on' : 'Sound off';
+    $('mute').setAttribute('aria-pressed', !soundOn);
+    if (!soundOn && window.speechSynthesis) speechSynthesis.cancel();
+  };
+
+  // ---------- Mode ----------
   function setMode(m) {
     mode = m;
     $('modeIn').setAttribute('aria-pressed', m === 'in');
@@ -83,33 +178,79 @@
   $('modeIn').onclick = () => setMode('in');
   $('modeOut').onclick = () => setMode('out');
 
+  // ---------- Scan flow ----------
   function handleId(raw) {
     if (busy || !raw) return;
     busy = true;
-    fetch(API_URL + '?action=scan&mode=' + encodeURIComponent(mode) + '&id=' + encodeURIComponent(raw.trim().toUpperCase()))
+    showScanning();
+    sfxScan();
+    const id = raw.trim().toUpperCase();
+    const req = fetch(API_URL + '?action=scan&mode=' + encodeURIComponent(mode) + '&id=' + encodeURIComponent(id))
       .then(r => r.json())
-      .then(showResult)
-      .catch(e => showResult({ error: 'Could not reach the lab database. Check the wifi and the API_URL.' }));
-    setTimeout(() => { busy = false; }, 2500);
+      .catch(() => ({ error: 'Could not reach the lab database. Check the wifi and the API_URL.', network: true }));
+    const pause = new Promise(res => setTimeout(res, 1600)); // let the scanning sequence play
+    Promise.all([req, pause]).then(([res]) => {
+      showResult(res);
+      setTimeout(() => { busy = false; }, 1500);
+    });
+  }
+
+  function showScanning() {
+    $('readerWrap').classList.remove('scanning');
+    void $('readerWrap').offsetWidth;
+    $('readerWrap').classList.add('scanning');
+    $('result').className = 'result';
+    $('result').innerHTML =
+      '<p class="status" style="color:var(--gold)">Scanning...</p>' +
+      '<div class="scanbar"><i></i></div>' +
+      '<p class="meta">Reading badge</p>';
+  }
+
+  function flash() {
+    const f = $('flash');
+    f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+  }
+
+  function powerFor(k) {
+    if (k.power) return k.power;
+    let h = 0;
+    String(k.id).split('').forEach(c => { h += c.charCodeAt(0); });
+    return POWERS[h % POWERS.length];
   }
 
   function showResult(r) {
+    $('readerWrap').classList.remove('scanning');
     const box = $('result');
     if (r.error) {
       box.className = 'result err';
-      box.innerHTML = '<p class="status" style="color:#ff8a98">Badge not found</p><p class="title">' + esc(r.error) + '</p>';
+      box.innerHTML = '<p class="status" style="color:#ff8a98">' + (r.network ? 'Connection problem' : 'Badge not found') +
+                      '</p><p class="title">' + esc(r.error) + '</p>';
+      sfxErr();
       return;
     }
-    const k = r.kid;
+    const k = r.kid, name = k.code || k.name;
     box.className = 'result ok';
-    let html = '<p class="status">' + (k.mode === 'out' ? 'Checked out' : 'Access granted') + '</p>' +
-               '<p class="code">' + esc(k.code || k.name) + '</p>' +
+    flash();
+
+    let html = '<p class="status">' + (k.mode === 'out' ? 'Mission complete' : 'Identity confirmed') + '</p>' +
+               '<p class="code slam">' + esc(name) + '</p>' +
                '<p class="title">' + esc(k.title) + '</p>' +
                '<p class="meta">' + esc(k.name) + ' · ' + esc(k.clearance) + '</p>';
+
     if (k.mode === 'out') {
       html += '<div class="stats">' +
         '<div class="stat"><b>' + (k.sprint === '' ? '-' : esc(k.sprint)) + '</b><span>Top speed (mph)</span></div>' +
         '<div class="stat"><b>' + (k.reflex === '' ? '-' : esc(k.reflex)) + '</b><span>Reflex time (sec)</span></div></div>';
+      sfxOut();
+      let line = 'Mission complete, ' + name + '.';
+      if (k.sprint !== '') line += ' Top speed: ' + k.sprint + ' miles per hour.';
+      speak(line);
+    } else {
+      const power = powerFor(k);
+      html += '<div class="power"><span>Power unlocked</span><b>' + esc(power) + '</b></div>';
+      if (r.counts) html += '<p class="count">' + r.counts.inLab + ' of ' + r.counts.total + ' scientists are in the lab.</p>';
+      sfxIn();
+      speak('Welcome to Star Labs, ' + name + '. ' + (k.clearance ? 'Clearance ' + k.clearance + '. ' : '') + 'Power unlocked: ' + power + '.');
     }
     box.innerHTML = html;
   }
@@ -133,7 +274,13 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  startCamera();
+  // One tap unlocks sound (browsers require it), then the camera starts
+  $('startBtn').onclick = () => {
+    ac();
+    if (window.speechSynthesis) speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+    $('start').style.display = 'none';
+    startCamera();
+  };
 </script>
 </body>
 </html>
